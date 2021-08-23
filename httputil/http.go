@@ -20,3 +20,16 @@ func ApplyIf(cond func(r *http.Request) bool, mw Middleware) Middleware {
 		})
 	}
 }
+
+// Stack returns new Middleware that runs `middlewares` sequentially.
+//
+// It is useful for applying multiple middlewares and reusing them.
+func Stack(middlewares ...Middleware) Middleware {
+	return func(next http.Handler) http.Handler {
+		h := next
+		for _, mw := range middlewares {
+			h = mw(h)
+		}
+		return h
+	}
+}
