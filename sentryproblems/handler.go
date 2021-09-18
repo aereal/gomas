@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/aereal/gomas/httputil"
 	"github.com/getsentry/sentry-go"
@@ -26,12 +27,25 @@ func decodeJSON(r io.Reader) (*problems.DefaultProblem, error) {
 	return &p, nil
 }
 
+// Options configure a middleware.
+type Options struct {
+	// WaitForDelivery indicates whether to block the current goroutine and wait until the event has been reported to Sentry.
+	WaitForDelivery bool
+
+	// FlushTimeout for the delivery events. Defaults to 2s. Only relevant when WaitForDelivery is true.
+	FlushTimeout time.Duration
+}
+
 // NewProblemReportMiddleware returns new middleware that reports problems to Sentry.
 //
 // The problems must be conform to [RFC-7807](https://datatracker.ietf.org/doc/html/rfc7807).
 //
 // The request's context must hold *sentry.Hub such as using [sentry-go/http](https://github.com/getsentry/sentry-go/tree/master/http).
-func NewProblemReportMiddleware() httputil.Middleware {
+func NewProblemReportMiddleware(opts Options) httputil.Middleware {
+	timeout := opts.FlushTimeout
+	if timeout == 0 {
+		timeout = time.Second * 2
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			buf := new(bytes.Buffer)
@@ -61,6 +75,9 @@ func NewProblemReportMiddleware() httputil.Middleware {
 					scope.SetExtra("problem.instance", p.Instance)
 				}
 				_ = hub.CaptureMessage(msg)
+				if opts.WaitForDelivery {
+					_ = hub.Flush(timeout)
+				}
 			})
 		})
 	}

@@ -73,7 +73,7 @@ func Test_ok(t *testing.T) {
 				}
 				problems.StatusProblemHandler(tc.problem).ServeHTTP(rw, r)
 			})
-			srv := httptest.NewServer(withSentryHub()(NewProblemReportMiddleware()(h)))
+			srv := httptest.NewServer(withSentryHub()(NewProblemReportMiddleware(Options{WaitForDelivery: true})(h)))
 			defer srv.Close()
 
 			var mux sync.Mutex
@@ -113,7 +113,7 @@ func Test_noSentryHub(t *testing.T) {
 		p := problems.NewStatusProblem(wantStatus)
 		problems.StatusProblemHandler(p).ServeHTTP(rw, r)
 	})
-	srv := httptest.NewServer(NewProblemReportMiddleware()(h))
+	srv := httptest.NewServer(NewProblemReportMiddleware(Options{WaitForDelivery: true})(h))
 	defer srv.Close()
 
 	resp, err := srv.Client().Get(srv.URL)
