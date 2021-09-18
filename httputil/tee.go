@@ -27,6 +27,7 @@ func (w *TeeResponseWriter) Header() http.Header {
 
 func (w *TeeResponseWriter) WriteHeader(statusCode int) {
 	w.rw.WriteHeader(statusCode)
+	w.statusCode = statusCode
 	w.writtenHeader = true
 }
 
